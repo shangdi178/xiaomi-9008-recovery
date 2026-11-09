@@ -26,7 +26,40 @@
 | [`xiaomi-edl-9008-recovery`](skills/xiaomi-edl-9008-recovery/SKILL.md) | **9008 / EDL 救砖主流程**:进 EDL、QSaharaServer + fh_loader 工具链、只读诊断、GPT/CRC 校验、分区内容比对、官方固件修复、读回验证 |
 | [`xiaomi-flash-toolkit-triage`](skills/xiaomi-flash-toolkit-triage/SKILL.md) | **刷机工具箱闪退排查**:`NoDefaultCurrentDirectoryInExePath` 导致 `adb.exe` 解析失败、exe 解密壳结构、驱动缺失、USB 链路不稳 |
 
-Skill 说明:加载对应 `SKILL.md` 即可,里面是可直接执行的 PowerShell 命令、GPT 字段偏移表、判定标准和踩坑记录。
+### 可执行脚本 [`scripts/`](scripts/)
+
+```
+lib.ps1                  共享函数(端口发现 / Sahara / fh_loader / CRC32 / GPT 解析 / XML 生成)
+01-diagnose.ps1          只读诊断:存储厂商 + 6 个 LUN 的 GPT 结构与 CRC
+02-verify-partitions.ps1 只读比对:分区内容 vs 固件包(MATCH / ALL-ZERO / DIFF)
+03-flash.ps1             刷写:按 rawprogramN.xml 偏移,支持 A/B 双槽、-DryRun
+04-readback-verify.ps1   读回校验:证明写入真的落盘
+05-auto-recover.ps1      一条龙:守候 9008 → 加载 → 刷写 → 复位 → 探测
+```
+
+用法见 [`scripts/README.md`](scripts/README.md)。
+
+### 没有放进仓库的东西,以及原因
+
+| 文件 | 原因 |
+|---|---|
+| **firehose 编程器**(`*.melf`、`prog_firehose_ddr.elf`,含社区流传的"免授权"版本) | 第三方 / Qualcomm 专有二进制,**无法核实来源与再分发授权**;且部分版本对特定存储颗粒有格机风险,散播收益小于风险 |
+| **官方线刷 ROM**(`.tgz`,6~8 GB) | 版权 + 体积,且小米官方下载源更新更快。请自行到小米官网/小米社区按机型下载 |
+| **设备分区备份**(`abl_stock.img` 等) | 是你那台设备独有的数据,对他人无用 |
+
+作为替代,这里给出当时实际使用的 loader 指纹,方便你核对手里那份是不是同一个:
+
+```
+文件名 : 小米骁龙8Gen2免授权9008引导文件(东芝铠侠存储切勿使用否则会被格机).melf
+大小   : 1,641,376 字节
+SHA256 : 4cf4570503c186054ca6683fa075f79c6b5b7534c660e5cd4472fac370125de5
+厂商ID : 0x1AD (SK Hynix) ← 该设备存储,不在"铠侠"警告范围内
+```
+
+> ⚠️ **使用任何第三方 loader 前必须核对存储颗粒**:
+> `0x1AD = SK Hynix`、`0x198 = Kioxia/Toshiba`、`0x1CE = Micron`、`0x1EC = Samsung`。
+> 厂商不匹配还硬用,确实会把设备刷死。`01-diagnose.ps1` 会把这个值打出来并给出提示。
+
 
 ---
 
